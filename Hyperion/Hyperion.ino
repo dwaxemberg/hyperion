@@ -12,12 +12,14 @@ static const uint8_t RESET = 22;
 static const uint8_t RED = 10;
 static const uint8_t GREEN = 9;
 static const uint8_t BLUE = 11;
-static const uint8_t FADE_SPEED = 5;
 
 static const int SERIAL_BAUD = 9600;
 
 GU7000_Serial_Async interface(BAUD_RATE, SIN, BUSY, RESET); 
 Noritake_VFD_GU7000 vfd;
+
+uint8_t tick;
+uint8_t color;
 
 void setup() {
   // Setup the VFD
@@ -37,57 +39,49 @@ void setup() {
   Serial.begin(SERIAL_BAUD);
   
   vfd.GU7000_clearScreen();
-  vfd.print("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+  vfd.GU7000_setFontStyle(true, false);
+  vfd.GU7000_setScrollMode(HorizScrollMode);
+  vfd.GU7000_setHorizScrollSpeed(3);
 }
-
 
 // Cycle through a sequence that fades from one color to another
 // Modified from https://learn.adafruit.com/rgb-led-strips/example-code
-void color_fade() {
-	int r, g, b;
-	
-	// fade from blue to violet
-	for (b = 0; b < 256; b++) {
-		analogWrite(BLUE, b);
-		_delay_ms(FADE_SPEED);
-	}
-	// fade from blue to violet
-	for (r = 0; r < 256; r++) {
-		analogWrite(RED, r);
-		_delay_ms(FADE_SPEED);
-	}
-	// fade from violet to red
-	for (b = 255; b >= 0; b--) {
-                analogWrite(BLUE, b);
-		_delay_ms(FADE_SPEED);
-	}
-	// fade from red to yellow
-	for (g = 0; g < 256; g++) {
-		analogWrite(GREEN, g);
-		_delay_ms(FADE_SPEED);
-	}
-	// fade from yellow to green
-	for (r = 255; r >= 0; r--) {
-		analogWrite(RED, r);
-		_delay_ms(FADE_SPEED);
-	}
-	// fade from green to teal
-	for (b = 0; b < 256; b++) {
-		analogWrite(BLUE, b);
-		_delay_ms(FADE_SPEED);
-	}
-	// fade from teal to blue
-	for (g = 255; g >= 0; g--) {
-		analogWrite(GREEN, g);
-		_delay_ms(FADE_SPEED);
-	}
-	// fade out blue
-	for (b = 255; b >= 0; b--) {
-		analogWrite(BLUE, b);
-		_delay_ms(FADE_SPEED);
-	}
+void color_fade(uint8_t tick) {
+  switch(color) {
+    case 0:
+      analogWrite(BLUE, tick);
+      break;
+    case 1:
+      analogWrite(RED, tick);
+      break;
+    case 2:
+      analogWrite(GREEN, tick);
+      break;
+    case 3:
+      analogWrite(BLUE, 255 - tick);
+      break;
+    case 4:
+      analogWrite(RED, 255 - tick);
+      break;
+    case 5:
+      analogWrite(GREEN, 255 - tick);
+      break;
+  }
+  if (tick == 255) {
+    color = color >= 5 ? 0 : color + 1;
+  }
+}
+
+void printStep(const char* str, uint8_t tick) {
+  size_t len = strlen(str);
+  uint8_t gap = 255 / (len - 1);
+  if (tick % gap == 0) {
+    vfd.print(str[tick / gap]);
+  }
 }
 
 void loop() {
-
+  printStep("Hackers Gonna Hack    ", tick);
+  color_fade(tick++);
+  _delay_ms(5);
 }
